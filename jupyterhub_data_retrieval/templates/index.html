@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Retrieve Archived Files</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; margin: 0; background: #f6f7f9; color: #1f2328; }
+    main { max-width: 760px; margin: 48px auto; padding: 0 16px; }
+    .card { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 24px; }
+    h1 { font-size: 1.5rem; margin-top: 0; }
+    h2 { font-size: 1.15rem; margin: 28px 0 8px; }
+    .hint { color: #57606a; font-size: 0.9rem; }
+    .notice { background: #ddf4ff; border: 1px solid #54aeff; border-radius: 6px; padding: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #d0d7de; }
+    th { font-size: 0.85rem; color: #57606a; font-weight: 600; }
+    td.num { white-space: nowrap; }
+    a.button { display: inline-block; padding: 4px 12px; font-weight: 600; color: #fff; background: #003262; border-radius: 6px; text-decoration: none; }
+    ol { padding-left: 20px; }
+    code { font-family: ui-monospace, Menlo, monospace; }
+    .error { background: #ffebe9; border: 1px solid #ff8182; border-radius: 6px; padding: 12px; }
+    .spinner { display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -1px; border: 2px solid #54aeff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>Your archived DataHub files</h1>
+    <p class="hint">Signed in as <strong>{{ email }}</strong>. Home directories that haven't been used for a while are archived at the end of each semester. You can download your own archives below.</p>
+
+    <div id="archives">
+      {% if hubs is None %}
+        <p class="notice"><span class="spinner"></span>Looking up your archived files. This can take a few seconds.</p>
+        <noscript><p>Please enable JavaScript, or <a href="{{ archives_url }}">open the list of your archives</a>.</p></noscript>
+      {% else %}
+        {% include "archives.html" %}
+      {% end %}
+    </div>
+
+    <h2>Extracting your files</h2>
+    <ol>
+      <li><strong>Mac or Linux:</strong> open Terminal, go to the folder with the download, and run <code>tar -xvf &lt;file&gt;.tar.gz</code>.</li>
+      <li><strong>Windows:</strong> install <a href="https://www.7-zip.org/">7-Zip</a>, right-click the file and choose <strong>7-Zip &gt; Extract Here</strong>. Repeat on the extracted <code>.tar</code> file.</li>
+      <li>Older archives are <code>.zip</code> files, which open directly on Mac and Windows.</li>
+    </ol>
+    <p class="hint">Need help? Contact {{ support_email }}.</p>
+  </div>
+</main>
+{% if hubs is None %}
+<script>
+  fetch({% raw json_encode(archives_url) %}, {
+    credentials: "same-origin",
+    headers: { "X-XSRFToken": {% raw json_encode(xsrf_token) %} },
+    redirect: "manual",
+  })
+    .then((response) => {
+      if (response.type === "opaqueredirect") {
+        // Login needed: reload so the browser goes through it, but only once
+        let reloaded = false;
+        try { reloaded = sessionStorage.getItem("data-retrieval-reloaded") === "1"; } catch (e) {}
+        if (reloaded) throw new Error("still redirected after reload");
+        try { sessionStorage.setItem("data-retrieval-reloaded", "1"); } catch (e) {}
+        window.location.reload();
+        return null;
+      }
+      try { sessionStorage.removeItem("data-retrieval-reloaded"); } catch (e) {}
+      if (!response.ok) throw new Error(response.status);
+      return response.text();
+    })
+    .then((html) => { if (html !== null) document.getElementById("archives").innerHTML = html; })
+    .catch(() => {
+      document.getElementById("archives").innerHTML =
+        '<p class="error">We couldn\'t load your archived files. Please refresh the page, or contact {{ support_email }}.</p>';
+    });
+</script>
+{% end %}
+</body>
+</html>

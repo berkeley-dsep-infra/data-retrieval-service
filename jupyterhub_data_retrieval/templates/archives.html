@@ -1,0 +1,19 @@
+{% if not hubs %}
+  <p class="notice">We couldn't find any archived files for {{ email }}. If you think this is a mistake, contact {{ support_email }}.</p>
+{% else %}
+  {% for hub, archives in hubs %}
+    <h2>{{ hub }}</h2>
+    <table>
+      <tr><th>Semester</th><th>Size</th><th>Archived</th><th></th></tr>
+      {% for archive in archives %}
+        <tr>
+          <td>{{ archive.semester }}</td>
+          <td class="num">{{ human_size(archive.size) }}</td>
+          <td class="num">{{ archive.updated.strftime("%Y-%m-%d") if archive.updated else "" }}</td>
+          <td><a class="button" href="{{ download_url }}?object={{ url_escape(archive.name) }}">Download</a></td>
+        </tr>
+      {% end %}
+    </table>
+  {% end %}
+  <p class="hint">Each download link is created when you click it and works for {{ expiration_minutes }} minutes.</p>
+{% end %}
